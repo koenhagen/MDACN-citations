@@ -4,7 +4,7 @@ import csv
 
 def get_citations():
     citation_list = []
-    with open("D:/citation -KOEN/citation_data/dblp.v12.json", "r", encoding='utf-8') as f:
+    with open("dblp.v12.json", "r", encoding='utf-8') as f:
         for line in f:
             if line == '[\n' or line == ']\n':
                 continue
