@@ -86,7 +86,10 @@ def get_reference_edges(seed_id, graph, order):
 
 	neighbour_ids = graph.predecessors(seed_id)
 	neighbours = []
-	for neighbour_id
+	for neighbour_id in neighbour_ids:
+		neighbours.append(graph.vs[neighbour_id]['name'])
+
+	print(neighbours)
 
 	for neighbour in neighbours:
 		new_edges.append([(seed_id, neighbour)])
@@ -99,7 +102,7 @@ def get_reference_edges(seed_id, graph, order):
 
 def get_reference_graph_seed_id(seed_id, graph, order):
 	reference_graph = igraph.Graph(directed=True)
-	new_vertex_ids = graph.neighborhood(seed_id, order=order)
+	new_vertex_ids = graph.neighborhood(seed_id, order=order, mode="in")
 	new_vertices = []
 	for vertex_id in new_vertex_ids:
 		new_vertices.append(graph.vs[vertex_id]['name'])
@@ -107,14 +110,17 @@ def get_reference_graph_seed_id(seed_id, graph, order):
 	print(new_vertices)
 	reference_graph.add_vertices(new_vertices)
 
-	# for vertex in reference_graph.vs:
-	# 	print(vertex)
-
 	ref_edges = get_reference_edges(seed_id, graph, order)
 	reference_graph.add_edges(ref_edges)
 
 	return reference_graph
 
 
-ref_graph = get_reference_graph_seed_id(1, g, 1)
-igraph.plot(ref_graph)
+print(g.vs[0])
+ref_graph = get_reference_graph_seed_id(0, g, 3)
+color_dict = {"yes": "blue", "no": "red"}
+visual_style = {}
+visual_style["vertex_color"] = ["blue"]
+visual_style["vertex_color"].extend(["red" for i in range(len(ref_graph.vs) - 1)])
+visual_style["bbox"] = (1600, 1600)
+igraph.plot(ref_graph, **visual_style)
