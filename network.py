@@ -3,6 +3,20 @@ import igraph
 import bigjson
 import matplotlib.pyplot as plt
 
+fos_list = ["Chemistry", "Biology", "Computer science", "Mathematics", "Physics"]
+
+
+def get_main_fos(research_paper):
+	if "fos" in research_paper.keys():
+		paper_fos = research_paper['fos']
+
+		for fos in paper_fos:
+			if fos['name'] in fos_list:
+				return fos['name']
+
+	return "Other"
+
+
 with open("dblp.v12_filtered_stripped.json", 'r', encoding='utf-8') as f:
 	data = json.load(f)
 
@@ -10,19 +24,24 @@ with open("dblp.v12_filtered_stripped.json", 'r', encoding='utf-8') as f:
 
 	vertices = []
 	edges = []
+	main_fos_list = []
 
 	print("Data Loaded")
 
 	for index, paper in enumerate(data):
 		id = str(paper['id'])
 		vertices.append(id)
+		main_fos = get_main_fos(paper)
+		main_fos_list.append(main_fos)
 		if 'references' in list(paper.keys()):
 			for reference in paper['references']:
 				ref_string = str(reference)
 				vertices.append(ref_string)
+				main_fos_list.append("Unknown")
 				edges.append((id, ref_string))
 
 g.add_vertices(vertices)
+g.vs["fos"] = main_fos_list
 g.add_edges(edges)
 
 print(g.is_directed())
@@ -89,38 +108,77 @@ def get_reference_edges(seed_id, graph, order):
 	for neighbour_id in neighbour_ids:
 		neighbours.append(graph.vs[neighbour_id]['name'])
 
-	print(neighbours)
-
 	for neighbour in neighbours:
 		new_edges.append([(seed_id, neighbour)])
 		new_edges.append(get_reference_edges(neighbour, graph, order - 1))
 
 	flat_edges = [item for sublist in new_edges for item in sublist]
-	# print(flat_edges)
 	return flat_edges
 
 
-def get_reference_graph_seed_id(seed_id, graph, order):
+def get_reference_graph_seed_id(seed_name, graph, order):
+	vertex_names = [v['name'] for v in graph.vs]
+	seed_id = vertex_names.index(seed_name)
+
 	reference_graph = igraph.Graph(directed=True)
 	new_vertex_ids = graph.neighborhood(seed_id, order=order, mode="in")
 	new_vertices = []
+	ref_fos_list = []
 	for vertex_id in new_vertex_ids:
 		new_vertices.append(graph.vs[vertex_id]['name'])
+		ref_fos_list.append(graph.vs[vertex_id]['fos'])
 
-	print(new_vertices)
 	reference_graph.add_vertices(new_vertices)
+	reference_graph.vs['fos'] = ref_fos_list
 
-	ref_edges = get_reference_edges(seed_id, graph, order)
+	ref_edges = get_reference_edges(seed_name, graph, order)
 	reference_graph.add_edges(ref_edges)
 
 	return reference_graph
 
 
-print(g.vs[0])
-ref_graph = get_reference_graph_seed_id(0, g, 3)
-color_dict = {"yes": "blue", "no": "red"}
+seed = str(1967005434)
+ref_graph = get_reference_graph_seed_id(seed, g, 2)
+
+# color_list = ["red" for i in range(len(ref_graph.vs))]
+color_dict = {
+	"Chemistry": "green",
+	"Biology": "red",
+	"Computer science": "orange",
+	"Mathematics": "purple",
+	"Other": "yellow",
+	"Physics": "cyan",
+	"Unknown": "pink"
+}
+color_list = [color_dict[x["fos"]] for x in ref_graph.vs]
+seed_vertex = ref_graph.vs.find(name=seed)
+color_list[seed_vertex.index] = "blue"
+
 visual_style = {}
-visual_style["vertex_color"] = ["blue"]
-visual_style["vertex_color"].extend(["red" for i in range(len(ref_graph.vs) - 1)])
+visual_style["vertex_color"] = color_list
 visual_style["bbox"] = (1600, 1600)
 igraph.plot(ref_graph, **visual_style)
+
+count = 0
+for v in g.vs:
+	print(v)
+	count += 1
+	if count > 10:
+		break
+
+neighbor_counts = []
+for vertex in g.vs:
+	n_neighbours = len(g.neighbors(vertex.index))
+	neighbor_counts.append((vertex['name'], vertex['fos'], n_neighbours))
+
+# sorted_neighbor_counts = sorted(neighbor_counts, key=lambda tup: tup[2], reverse=True)
+# print(sorted_neighbor_counts[:50])
+
+new_seed = None
+for x in neighbor_counts:
+	if x[1] == "Biology" and x[2] > 100:
+		new_seed = x
+		break
+
+print(new_seed)
+
